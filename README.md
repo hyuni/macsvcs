@@ -3,7 +3,7 @@ macsvcs
 
 This tiny script disables (or enables) unneeded macOS services. It was derived from the work
 of [pwnsdx](https://gist.github.com/pwnsdx/d87b034c4c0210b988040ad2f85a68d3). The agents and daemons
-listed in the original script are used as-is.
+used in the original script are used as-is.
 
 
 System Integrity Protection
@@ -45,3 +45,17 @@ To enable them:
 ```
 ./macsvcs -e
 ```
+
+To list the agents and daemons to be configured:
+
+```
+./macsvcs -l
+```
+
+
+Notes
+-----
+
+I wanted to use GNU getopt, so that I can use long flags, but GNU getopt is available as third party
+software, and the benefits that it would yield are too trivial for the purposes that this script
+will serve.
