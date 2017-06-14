@@ -1,0 +1,250 @@
+#!/usr/bin/env bash
+
+# Trivial script to disable or enable unneeded services
+#
+# Source: https://gist.github.com/pwnsdx/d87b034c4c0210b988040ad2f85a68d3
+# Original author’s notes:
+#
+# IMPORTANT: You will need to disable SIP aka Rootless in order to fully execute this script, you can reenable it after.
+# WARNING: It might disable things that you may not like. Please double check the services in the TODISABLE vars.
+#
+# Get active services: launchctl list | grep -v "\-\t0"
+# Find a service: grep -lR [service] /System/Library/Launch* /Library/Launch* ~/Library/LaunchAgents
+
+set -euo pipefail
+readonly IFS=$'\n\t'
+
+readonly SELF=$(basename "${BASH_SOURCE[0]}")
+readonly VERSION=0.0.1
+readonly MINVER=10.12.5
+readonly GETOPT=/usr/local/opt/gnu-getopt/bin/getopt
+readonly BASE_DIR=/System/Library
+
+# Agents to disable
+readonly AGENTS=('com.apple.security.keychainsyncingoveridsproxy' 'com.apple.personad' 'com.apple.passd' 'com.apple.screensharing.MessagesAgent' 'com.apple.CommCenter-osx' 'com.apple.Maps.mapspushd' 'com.apple.Maps.pushdaemon' 'com.apple.photoanalysisd' 'com.apple.telephonyutilities.callservicesd' 'com.apple.AirPlayUIAgent' 'com.apple.AirPortBaseStationAgent' 'com.apple.CalendarAgent' 'com.apple.DictationIM' 'com.apple.iCloudUserNotifications' 'com.apple.familycircled' 'com.apple.familycontrols.useragent' 'com.apple.familynotificationd' 'com.apple.gamed' 'com.apple.icloud.findmydeviced.findmydevice-user-agent' 'com.apple.icloud.fmfd' 'com.apple.imagent' 'com.apple.cloudfamilyrestrictionsd-mac' 'com.apple.cloudpaird' 'com.apple.cloudphotosd' 'com.apple.DictationIM' 'com.apple.assistant_service' 'com.apple.CallHistorySyncHelper' 'com.apple.CallHistoryPluginHelper' 'com.apple.AOSPushRelay' 'com.apple.IMLoggingAgent' 'com.apple.geodMachServiceBridge' 'com.apple.syncdefaultsd' 'com.apple.security.cloudkeychainproxy3' 'com.apple.security.idskeychainsyncingproxy' 'com.apple.security.keychain-circle-notification' 'com.apple.sharingd' 'com.apple.appleseed.seedusaged' 'com.apple.cloudd' 'com.apple.assistantd' 'com.apple.parentalcontrols.check' 'com.apple.parsecd' 'com.apple.identityservicesd')
+
+# Daemons to disable
+readonly DAEMONS=('com.apple.netbiosd' 'com.apple.preferences.timezone.admintool' 'com.apple.preferences.timezone.auto' 'com.apple.remotepairtool' 'com.apple.rpmuxd' 'com.apple.security.FDERecoveryAgent' 'com.apple.icloud.findmydeviced' 'com.apple.findmymacmessenger' 'com.apple.familycontrols' 'com.apple.findmymac' 'com.apple.SubmitDiagInfo' 'com.apple.screensharing' 'com.apple.appleseed.fbahelperd' 'com.apple.apsd' 'com.apple.AOSNotificationOSX' 'com.apple.FileSyncAgent.sshd' 'com.apple.ManagedClient.cloudconfigurationd' 'com.apple.ManagedClient.enroll' 'com.apple.ManagedClient' 'com.apple.ManagedClient.startup' 'com.apple.iCloudStats' 'com.apple.locationd' 'com.apple.mbicloudsetupd' 'com.apple.laterscheduler' 'com.apple.awacsd' 'com.apple.eapolcfg_auth' 'com.apple.familycontrols')
+
+OPT_HELP=
+OPT_DEBUG=
+OPT_VERBOSE=
+OPT_LIST=
+OPT_ENABLE=
+OPT_DISABLE=
+
+error () {
+  #echo -e "\e[0;31m\e[1mError: \e[0;0m$@" >&2
+  echo "Error: $@" >&2
+  exit 1
+}
+
+warning () {
+  #echo -e "\e[0;33m\e[1mWarning: \e[0;0m$@" >&2
+  echo "Warning: $@" >&2
+  return 0
+}
+
+mute () {
+  $@ > /dev/null 2>&1
+}
+
+debug () {
+  if [[ -n "$OPT_DEBUG" ]]; then
+      echo '**'
+      echo \$@: $@
+      echo \$OPT_HELP: "$OPT_HELP"
+      echo \$OPT_DEBUG: "$OPT_DEBUG"
+      echo \$OPT_VERBOSE: "$OPT_VERBOSE"
+  fi
+}
+
+parse_arguments () {
+  debug parse_arguments "$@"
+
+  local opts=$(getopt -n "$SELF" --options hdved --longoptions help,debug,verbose,enable,disable -- "$@")
+
+  [[ $? != 0 ]] && error "failed to parse arguments."
+
+  eval set -- "$opts"
+
+  while true; do
+    case "$1" in
+      (-h|--help) OPT_HELP=true; shift ;;
+      (-d|--debug) OPT_DEBUG=true; shift ;;
+      (-v|--verbose) OPT_VERBOSE=true; shift ;;
+      (-e|--enable) OPT_ENABLE=true; shift ;;
+      (-d|--disable) OPT_DISABLE=true; shift ;;
+      (--) shift; break ;;
+      (*) break ;;
+    esac
+  done
+
+  OPT_ID=${@:-1}
+}
+
+list_components () {
+  echo Agents: "${AGENTS[@]}"
+  echo Daemons: "${DAEMONS[@]}"
+}
+
+process_arguments () {
+  debug process_arguments "$@"
+
+  if [[ -n "$OPT_LIST" ]]; then
+      list_components
+      exit 0
+  fi
+
+  if [[ -n "$OPT_ENABLE" ]]; then
+      return 0
+  fi
+
+  if [[ -n "$OPT_DISABLE" ]]; then
+      return 0
+  fi
+
+  if [[ -n "$OPT_HELP" || "$#" -lt 1 ]]; then
+      display_usage
+  else
+    return 0
+  fi
+}
+
+display_usage () {
+  cat <<EOF
+$SELF $VERSION:
+
+USAGE: $SELF [OPTIONS]
+
+OPTIONS:
+-h Display this help
+-d Display debugging messages
+-v Enable verbose output
+-e Enable services
+-d Disable services
+EOF
+  exit 0
+}
+
+check_getopt () {
+  if [[ ! -f "$GETOPT_PATH" ]]; then
+      error "GNU getopt is missing. Please install it with:\n\nbrew install gnu-getopt"
+  fi
+}
+
+ensure_macos () {
+  if [[ -n "$(which sw_vers)" ]]; then
+      return 0
+  else
+    error "This script runs only on macOS systems"
+  fi
+}
+
+ensure_min_version () {
+  if [[ "$(sw_vers -productVersion)" < "$MINVER" ]]; then
+      error "The required minimum macOS version $MINVER is not met. Please upgrade."
+  fi
+}
+
+process_components () {
+  local op=$1
+  local name=$(tr '[:lower:]' '[:upper:]' <<< ${2:0:1})${2:1}
+  local launch_name=Launch${name}
+  local plist_name=$3
+  local plist_path=${BASE_DIR}/$launch_name/${plist_name}.plist
+
+  local command=
+  local comment=
+
+  case $op in
+    enable)
+      command=load
+      comment=enabled
+
+      if [[ -f "${plist_path}.bak" ]]; then
+          sudo mv "${plist_path}.bak" "${plist_path}"
+      else
+        warning "The plist file ${plist_path}.bak does not exist."
+      fi
+      ;;
+    disable)
+      command=unload
+      comment=disabled
+
+      if [[ -f "${plist_path}" ]]; then
+          sudo mv "${plist_path}" "${plist_path}.bak"
+      else
+        warning "The plist file ${plist_path} does not exist."
+      fi
+      ;;
+    *)
+      error "Invalid operation $op"
+      ;;
+  esac
+
+  if [[ -f "$plist_path" ]]; then
+      sudo launchctl $command -w $plist_path
+      launchctl $command -w $plist_path
+  else
+    warning "The plist file $plist_path does not exist."
+  fi
+
+  echo "[OK] ${name} ${plist_name} ${comment}"
+}
+
+process_agents () {
+  if [[ -n "$OPT_ENABLE" ]]; then
+      for agent in "${AGENTS[@]}"; do
+        process_components enable agent $agent
+      done
+  elif [[ -n "$OPT_DISABLE" ]]; then
+      for agent in "${AGENTS[@]}"; do
+        process_components disable agent $agent
+      done
+  else
+    display_usage
+  fi
+}
+
+process_daemons () {
+  for daemon in "${DAEMONS[@]}"; do
+    if [[ -n "$OPT_ENABLE" ]]; then
+        process_components enable daemon $daemon
+    elif [[ -n "$OPT_DISABLE" ]]; then
+        process_components disable daemon $daemon
+    else
+      display_usage
+    fi
+  done
+}
+
+main () {
+  debug main "$@"
+
+  # check_getopt
+  # parse_arguments "$@"
+
+  while getopts ":hDvled" opt; do
+    case $opt in
+      h) OPT_HELP=true ;;
+      D) OPT_DEBUG=true ;;
+      v) OPT_VERBOSE=true ;;
+      l) OPT_LIST=true ;;
+      e) OPT_ENABLE=true ;;
+      d) OPT_DISABLE=true ;;
+      *) return 1 ;;
+    esac
+  done
+
+  shift $((OPTIND-1))
+
+  ensure_macos
+  ensure_min_version
+
+  process_arguments "$@"
+  process_agents
+  process_daemons
+}
+
+main $@
