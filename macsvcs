@@ -122,6 +122,14 @@ check_getopt () {
   fi
 }
 
+check_sip () {
+  if csrutil status | grep -q enabled; then
+      error "Please disable System Integrity Protection (SIP), then re-run this script."
+  else
+    return 0
+  fi
+}
+
 ensure_macos () {
   if mute which sw_vers; then
       return 0
@@ -230,6 +238,8 @@ main () {
 
   ensure_macos
   ensure_min_version
+
+  check_sip
 
   process_arguments "$@"
   process_agents
