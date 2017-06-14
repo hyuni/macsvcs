@@ -123,7 +123,7 @@ check_getopt () {
 }
 
 ensure_macos () {
-  if [[ -n "$(which sw_vers)" ]]; then
+  if mute which sw_vers; then
       return 0
   else
     error "This script runs only on macOS systems"
