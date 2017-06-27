@@ -19,20 +19,6 @@ OPT_ENABLE=
 OPT_DISABLE=
 OPT_WARN=
 
-error () {
-  echo -e "[\033[1;31mERROR\033[0m] $@"
-  exit 1
-}
-
-warning () {
-  echo -e "[\033[1;33mWARNING\033[0m] $@"
-  return 0
-}
-
-mute () {
-  $@ > /dev/null 2>&1
-}
-
 debug () {
   if [[ -n "$OPT_DEBUG" ]]; then
       echo '**'
@@ -40,11 +26,35 @@ debug () {
       echo \$OPT_HELP: "$OPT_HELP"
       echo \$OPT_DEBUG: "$OPT_DEBUG"
       echo \$OPT_VERBOSE: "$OPT_VERBOSE"
+      echo \$OPT_LIST: "$OPT_LIST"
+      echo \$OPT_ENABLE: "$OPT_ENABLE"
+      echo \$OPT_DISABLE: "$OPT_DISABLE"
+      echo \$OPT_WARN: "$OPT_WARN"
   fi
 }
 
+error () {
+  debug "${FUNCNAME[0]}" "$@"
+
+  echo -e "[\033[1;31mERROR\033[0m] $@"
+  exit 1
+}
+
+warning () {
+  debug "${FUNCNAME[0]}" "$@"
+
+  echo -e "[\033[1;33mWARNING\033[0m] $@"
+  return 0
+}
+
+mute () {
+  debug "${FUNCNAME[0]}" "$@"
+
+  $@ > /dev/null 2>&1
+}
+
 parse_arguments () {
-  debug parse_arguments "$@"
+  debug "${FUNCNAME[0]}" "$@"
 
   local opts=$(getopt -n "$SELF" --options hdved --longoptions help,debug,verbose,enable,disable -- "$@")
 
@@ -69,12 +79,13 @@ parse_arguments () {
 }
 
 list_components () {
+  debug "${FUNCNAME[0]}" "$@"
   echo Agents: "${AGENTS[@]}"
   echo Daemons: "${DAEMONS[@]}"
 }
 
 process_arguments () {
-  debug process_arguments "$@"
+  debug "${FUNCNAME[0]}" "$@"
 
   if [[ -n "$OPT_LIST" ]]; then
       list_components
@@ -97,6 +108,8 @@ process_arguments () {
 }
 
 display_usage () {
+  debug "${FUNCNAME[0]}" "$@"
+
   cat <<EOF
 $SELF $VERSION:
 
@@ -117,12 +130,16 @@ EOF
 }
 
 check_getopt () {
+  debug "${FUNCNAME[0]}" "$@"
+
   if [[ ! -f "$GETOPT_PATH" ]]; then
       error "GNU getopt is missing. Please install it with:\n\nbrew install gnu-getopt"
   fi
 }
 
 check_sip () {
+  debug "${FUNCNAME[0]}" "$@"
+
   if csrutil status | grep -q enabled; then
       error "Please disable System Integrity Protection (SIP), then re-run this script."
   else
@@ -131,6 +148,8 @@ check_sip () {
 }
 
 ensure_macos () {
+  debug "${FUNCNAME[0]}" "$@"
+
   if mute which sw_vers; then
       return 0
   else
@@ -139,12 +158,16 @@ ensure_macos () {
 }
 
 ensure_min_version () {
+  debug "${FUNCNAME[0]}" "$@"
+
   if [[ "$(sw_vers -productVersion)" < "$MINVER" ]]; then
       error "The required minimum macOS version $MINVER is not met. Please upgrade."
   fi
 }
 
 process_components () {
+  debug "${FUNCNAME[0]}" "$@"
+
   local op=$1
   local name=$(tr '[:lower:]' '[:upper:]' <<< ${2:0:1})${2:1}
   local launch_name=Launch${name}
@@ -191,6 +214,8 @@ process_components () {
 }
 
 process_agents () {
+  debug "${FUNCNAME[0]}" "$@"
+
   if [[ -n "$OPT_ENABLE" ]]; then
       for agent in "${AGENTS[@]}"; do
         process_components enable agent $agent
@@ -205,6 +230,8 @@ process_agents () {
 }
 
 process_daemons () {
+  debug "${FUNCNAME[0]}" "$@"
+
   for daemon in "${DAEMONS[@]}"; do
     if [[ -n "$OPT_ENABLE" ]]; then
         process_components enable daemon $daemon
@@ -217,6 +244,8 @@ process_daemons () {
 }
 
 parse_arguments () {
+  debug "${FUNCNAME[0]}" "$@"
+
   while getopts ":hDvldew" opt; do
     case $opt in
       h) OPT_HELP=true ;;
@@ -234,7 +263,7 @@ parse_arguments () {
 }
 
 main () {
-  debug main "$@"
+  debug "${FUNCNAME[0]}" "$@"
 
   # check_getopt
   # parse_arguments "$@"
