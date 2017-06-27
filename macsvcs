@@ -53,7 +53,7 @@ mute () {
   $@ > /dev/null 2>&1
 }
 
-parse_arguments () {
+parse_arguments_getopt () {
   debug "${FUNCNAME[0]}" "$@"
 
   local opts=$(getopt -n "$SELF" --options hdved --longoptions help,debug,verbose,enable,disable -- "$@")
@@ -243,7 +243,7 @@ process_daemons () {
   done
 }
 
-parse_arguments () {
+parse_arguments_getopts () {
   debug "${FUNCNAME[0]}" "$@"
 
   while getopts ":hDvldew" opt; do
@@ -266,9 +266,8 @@ main () {
   debug "${FUNCNAME[0]}" "$@"
 
   # check_getopt
-  # parse_arguments "$@"
-
-  parse_arguments $@
+  # parse_arguments_getopt "$@"
+  parse_arguments_getopts $@
 
   ensure_macos
   ensure_min_version
