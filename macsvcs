@@ -17,16 +17,15 @@ OPT_VERBOSE=
 OPT_LIST=
 OPT_ENABLE=
 OPT_DISABLE=
+OPT_WARN=
 
 error () {
-  #echo -e "\e[0;31m\e[1mError: \e[0;0m$@" >&2
-  echo "Error: $@" >&2
+  echo -e "[\033[1;31mERROR\033[0m] $@"
   exit 1
 }
 
 warning () {
-  #echo -e "\e[0;33m\e[1mWarning: \e[0;0m$@" >&2
-  echo "Warning: $@" >&2
+  echo -e "[\033[1;33mWARNING\033[0m] $@"
   return 0
 }
 
@@ -110,6 +109,9 @@ OPTIONS:
 -l List services
 -d Disable services
 -e Enable services
+-w Display warnings
+
+See https://github.com/ebzzry/macsvcs for more information
 EOF
   exit 0
 }
@@ -159,8 +161,8 @@ process_components () {
 
       if [[ -f "${plist_path}.bak" ]]; then
           sudo mv "${plist_path}.bak" "${plist_path}"
-      else
-        warning "The plist file ${plist_path}.bak does not exist."
+
+          [[ -n "$OPT_WARN" ]] && warning "The plist file ${plist_path}.bak does not exist."
       fi
       ;;
     disable)
@@ -169,8 +171,8 @@ process_components () {
 
       if [[ -f "${plist_path}" ]]; then
           sudo mv "${plist_path}" "${plist_path}.bak"
-      else
-        warning "The plist file ${plist_path} does not exist."
+
+          [[ -n "$OPT_WARN" ]] && warning "The plist file ${plist_path} does not exist."
       fi
       ;;
     *)
@@ -181,11 +183,11 @@ process_components () {
   if [[ -f "$plist_path" ]]; then
       sudo launchctl $command -w $plist_path
       launchctl $command -w $plist_path
-  else
-    warning "The plist file $plist_path does not exist."
+
+      [[ -n "$OPT_WARN" ]] && warning "The plist file $plist_path does not exist."
   fi
 
-  echo "[OK] ${name} ${plist_name} ${comment}"
+  echo -e "[\033[1;32mOK\033[0m] ${name} ${plist_name} ${comment}"
 }
 
 process_agents () {
@@ -214,13 +216,8 @@ process_daemons () {
   done
 }
 
-main () {
-  debug main "$@"
-
-  # check_getopt
-  # parse_arguments "$@"
-
-  while getopts ":hDvlde" opt; do
+parse_arguments () {
+  while getopts ":hDvldew" opt; do
     case $opt in
       h) OPT_HELP=true ;;
       D) OPT_DEBUG=true ;;
@@ -228,11 +225,21 @@ main () {
       l) OPT_LIST=true ;;
       d) OPT_DISABLE=true ;;
       e) OPT_ENABLE=true ;;
+      w) OPT_WARN=true ;;
       *) return 1 ;;
     esac
   done
 
   shift $((OPTIND-1))
+}
+
+main () {
+  debug main "$@"
+
+  # check_getopt
+  # parse_arguments "$@"
+
+  parse_arguments $@
 
   ensure_macos
   ensure_min_version
