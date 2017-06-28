@@ -1,46 +1,44 @@
 macsvcs
 =======
 
-This tiny script disables (or enables) unneeded macOS services. It was derived from the work
+
+This script disables (or enables) unneeded macOS services. It was derived from the work
 of [pwnsdx](https://gist.github.com/pwnsdx/d87b034c4c0210b988040ad2f85a68d3). The agents and daemons
 used in the original script are used as-is.
 
+This script needs to have
+macOS’s
+[System Integrity Protection (SIP)](https://en.wikipedia.org/wiki/System_Integrity_Protection)
+disabled, in order for all the settings to take effect. Additionally, it requires that the user who
+is going to run this script must be an administrator.
 
-System Integrity Protection
----------------------------
 
-macOS’s [System Integrity Protection](https://en.wikipedia.org/wiki/System_Integrity_Protection)
-must be disabled to enable this script to make all the changes.
+Usage
+-----
 
-To check if SIP is enabled, run:
 
-```bash
-ls -lO /System
-```
-
-If the text `restricted` appears in the `Library` directory, then SIP is enabled.
+### Disable SIP
 
 To disable SIP, boot into recovery mode—press and hold `⌘ + r` when the system is booting, prior to
-the Apple logo display. Click Utilities > Terminal. Then, run:
+the Apple logo display. Click `Utilities > Terminal` then, run:
 
 ```bash
 csrutil disable
+reboot
 ```
 
-Then, restart your Mac and login to your regular account.  To verify that SIP is disabled, run the
-SIP check command from above and check that `restricted` text no longer appears.
+After the system boots, login to your account.
 
 
-Services
---------
+### Disable Services
 
-To disable the unneeded agents and daemon on your macOS system, run:
+To disable the unneeded agents and daemon on your macOS system:
 
 ```bash
 ./macsvcs unload
 ```
 
-To enable them:
+To enable them back:
 
 ```bash
 ./macsvcs load
@@ -53,16 +51,19 @@ To list the agents and daemons to be configured:
 ./macsvcs list-daemons
 ```
 
-To display warnings for either `unload` or `load`:
+To display warnings for either the `unload` or `load` commands:
 
 ```bash
+./macsvcs -w unload
 ./macsvcs -w load
 ```
 
 
-Notes
------
+### Re-enable SIP
 
-I wanted to use GNU getopt, so that I can use long flags, but GNU getopt is available as third party
-software, and the benefits that it would yield are too trivial for the purposes that this script
-will serve.
+To re-enable SIP, boot into recovery mode just like above. Open the Terminal application then, run:
+
+```bash
+csrutil enable
+reboot
+```
