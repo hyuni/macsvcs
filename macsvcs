@@ -101,19 +101,21 @@ list_components () {
 process_arguments () {
   debug "${FUNCNAME[0]}" "$@"
 
-  if [[ "$1" == "list-components" ]]; then
-      list_components
-      exit 0
-  fi
+  if [[ "$#" -gt 1 ]]; then
+      if [[ "$1" == "list-components" ]]; then
+          list_components
+          exit 0
+      fi
 
-  if [[ "$1" == "list-agents" ]]; then
-      list_agents
-      exit 0
-  fi
+      if [[ "$1" == "list-agents" ]]; then
+          list_agents
+          exit 0
+      fi
 
-  if [[ "$1" == "list-daemons" ]]; then
-      list_daemons
-      exit 0
+      if [[ "$1" == "list-daemons" ]]; then
+          list_daemons
+          exit 0
+      fi
   fi
 
   if [[ -n "$OPT_HELP" || "$#" -lt 1 ]]; then
