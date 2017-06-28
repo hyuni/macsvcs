@@ -38,7 +38,7 @@ ok () {
   debug "${FUNCNAME[0]}" "$@"
 
   echo -e "[\033[1;32mOK\033[0m] $@"
-  exit 1
+  return 0
 }
 
 warning () {
@@ -79,18 +79,40 @@ parse_arguments_getoptr () {
   OPT_ID=${@:-1}
 }
 
+list_agents () {
+  debug "${FUNCNAME[0]}" "$@"
+
+  for i in ${AGENTS[@]}; do echo $i; done
+}
+
+list_daemons () {
+  debug "${FUNCNAME[0]}" "$@"
+
+  for i in ${DAEMONS[@]}; do echo $i; done
+}
+
 list_components () {
   debug "${FUNCNAME[0]}" "$@"
 
-  echo Agents: "${AGENTS[@]}"
-  echo Daemons: "${DAEMONS[@]}"
+  list_agents
+  list_daemons
 }
 
 process_arguments () {
   debug "${FUNCNAME[0]}" "$@"
 
-  if [[ "$1" == "list" ]]; then
+  if [[ "$1" == "list-components" ]]; then
       list_components
+      exit 0
+  fi
+
+  if [[ "$1" == "list-agents" ]]; then
+      list_agents
+      exit 0
+  fi
+
+  if [[ "$1" == "list-daemons" ]]; then
+      list_daemons
       exit 0
   fi
 
@@ -119,9 +141,11 @@ OPTIONS:
 
 COMMANDS:
 
-list    List services
-disable Disable services
-enable  Enable services
+unload          Disable services
+load            Enable services
+list-agents     List agents
+list-daemons    List daemons
+list-components List all components
 
 See https://github.com/ebzzry/macsvcs for more information
 EOF
@@ -170,6 +194,7 @@ rename_plist () {
 
   if [[ -f "${src}" ]]; then
       sudo mv "${src}" "${dest}"
+      ok "${dest}"
   else
     if [[ -n "$OPT_WARN" ]]; then
         warning "The plist file ${src} does not exist."
@@ -184,6 +209,7 @@ run_launchctl () {
   if [[ -f "$plist_path" ]]; then
       sudo launchctl $command -w $plist_path
       launchctl $command -w $plist_path
+      ok "${plist_path}"
   else
     if [[ -n "$OPT_WARN" ]]; then
         warning "The plist file ${plist_path} does not exist."
@@ -198,7 +224,7 @@ process_components () {
   local name=$(tr '[:lower:]' '[:upper:]' <<< ${2:0:1})${2:1}
   local launch_name=Launch${name}
   local plist_name=$3
-  local plist_path=${BASE_DIR}/$launch_name/${plist_name}.plist
+  local plist_path=${BASE_DIR}/${launch_name}s/${plist_name}.plist
   local comment=
 
   case $op in
@@ -213,7 +239,7 @@ process_components () {
       run_launchctl unload "${plist_path}"
       ;;
     *)
-      error "Invalid operation $op"
+      error Invalid operation $op
       ;;
   esac
 }
@@ -269,9 +295,21 @@ parse_arguments_getopts () {
 main () {
   debug "${FUNCNAME[0]}" "$@"
 
+  while getopts ":hDvw" opt; do
+    case $opt in
+      h) OPT_HELP=true ;;
+      D) OPT_DEBUG=true ;;
+      v) OPT_VERBOSE=true ;;
+      w) OPT_WARN=true ;;
+      *) return 1 ;;
+    esac
+  done
+
+  shift $((OPTIND-1))
+
   # check_getopt
   # parse_arguments_getopt "$@"
-  parse_arguments_getopts $@
+  # parse_arguments_getopts $@
 
   ensure_macos
   ensure_min_version
