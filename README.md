@@ -14,7 +14,7 @@ must be disabled to enable this script to make all the changes.
 
 To check if SIP is enabled, run:
 
-```
+```bash
 ls -lO /System
 ```
 
@@ -23,7 +23,7 @@ If the text `restricted` appears in the `Library` directory, then SIP is enabled
 To disable SIP, boot into recovery mode—press and hold `⌘ + r` when the system is booting, prior to
 the Apple logo display. Click Utilities > Terminal. Then, run:
 
-```
+```bash
 csrutil disable
 ```
 
@@ -36,20 +36,27 @@ Services
 
 To disable the unneeded agents and daemon on your macOS system, run:
 
-```
-./macsvcs -d
+```bash
+./macsvcs unload
 ```
 
 To enable them:
 
-```
-./macsvcs -e
+```bash
+./macsvcs load
 ```
 
 To list the agents and daemons to be configured:
 
+```bash
+./macsvcs list-agents
+./macsvcs list-daemons
 ```
-./macsvcs -l
+
+To display warnings for either `unload` or `load`:
+
+```bash
+./macsvcs -w load
 ```
 
 
