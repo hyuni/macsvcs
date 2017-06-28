@@ -13,9 +13,8 @@ disabled, in order for all the settings to take effect. Additionally, it require
 is going to run this script must be an administrator.
 
 
-Usage
------
-
+Prerequisites
+-------------
 
 ### Disable SIP
 
@@ -30,7 +29,10 @@ reboot
 After the system boots, login to your account.
 
 
-### Disable Services
+Usage
+-----
+
+### Disable services
 
 To disable the unneeded agents and daemon on your macOS system:
 
@@ -59,9 +61,12 @@ To display warnings for either the `unload` or `load` commands:
 ```
 
 
+Closing remarks
+---------------
+
 ### Re-enable SIP
 
-To re-enable SIP, boot into recovery mode just like above. Open the Terminal application then, run:
+Should you wish to re-enable SIP, boot into recovery mode just like above. Open the Terminal application then, run:
 
 ```bash
 csrutil enable
