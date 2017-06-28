@@ -14,9 +14,6 @@ readonly DAEMONS=('com.apple.netbiosd' 'com.apple.preferences.timezone.admintool
 OPT_HELP=
 OPT_DEBUG=
 OPT_VERBOSE=
-OPT_LIST=
-OPT_ENABLE=
-OPT_DISABLE=
 OPT_WARN=
 
 debug () {
@@ -26,9 +23,6 @@ debug () {
       echo \$OPT_HELP: "$OPT_HELP"
       echo \$OPT_DEBUG: "$OPT_DEBUG"
       echo \$OPT_VERBOSE: "$OPT_VERBOSE"
-      echo \$OPT_LIST: "$OPT_LIST"
-      echo \$OPT_ENABLE: "$OPT_ENABLE"
-      echo \$OPT_DISABLE: "$OPT_DISABLE"
       echo \$OPT_WARN: "$OPT_WARN"
   fi
 }
@@ -71,14 +65,14 @@ parse_arguments_getoptr () {
 
   while true; do
     case "$1" in
-      (-h|--help) OPT_HELP=true; shift ;;
-      (-D|--debug) OPT_DEBUG=true; shift ;;
-      (-v|--verbose) OPT_VERBOSE=true; shift ;;
-      (-l|--list) OPT_LIST=true; shift ;;
-      (-d|--disable) OPT_DISABLE=true; shift ;;
-      (-e|--enable) OPT_ENABLE=true; shift ;;
-      (--) shift; break ;;
-      (*) break ;;
+      -h|--help) OPT_HELP=true; shift ;;
+      -D|--debug) OPT_DEBUG=true; shift ;;
+      -v|--verbose) OPT_VERBOSE=true; shift ;;
+      -l|--list) OPT_LIST=true; shift ;;
+      -d|--disable) OPT_DISABLE=true; shift ;;
+      -e|--enable) OPT_ENABLE=true; shift ;;
+      --) shift; break ;;
+      *) break ;;
     esac
   done
 
@@ -87,6 +81,7 @@ parse_arguments_getoptr () {
 
 list_components () {
   debug "${FUNCNAME[0]}" "$@"
+
   echo Agents: "${AGENTS[@]}"
   echo Daemons: "${DAEMONS[@]}"
 }
@@ -94,17 +89,9 @@ list_components () {
 process_arguments () {
   debug "${FUNCNAME[0]}" "$@"
 
-  if [[ -n "$OPT_LIST" ]]; then
+  if [[ "$1" == "list" ]]; then
       list_components
       exit 0
-  fi
-
-  if [[ -n "$OPT_ENABLE" ]]; then
-      return 0
-  fi
-
-  if [[ -n "$OPT_DISABLE" ]]; then
-      return 0
   fi
 
   if [[ -n "$OPT_HELP" || "$#" -lt 1 ]]; then
@@ -118,18 +105,23 @@ display_usage () {
   debug "${FUNCNAME[0]}" "$@"
 
   cat <<EOF
-$SELF $VERSION:
+$SELF $VERSION
 
 USAGE: $SELF [OPTIONS]
 
 OPTIONS:
+
 -h Display this help
 -D Display debugging messages
 -v Enable verbose output
--l List services
--d Disable services
--e Enable services
 -w Display warnings
+
+
+COMMANDS:
+
+list    List services
+disable Disable services
+enable  Enable services
 
 See https://github.com/ebzzry/macsvcs for more information
 EOF
@@ -195,7 +187,7 @@ run_launchctl () {
   else
     if [[ -n "$OPT_WARN" ]]; then
         warning "The plist file ${plist_path} does not exist."
-    else
+    fi
   fi
 }
 
@@ -245,44 +237,27 @@ process_common () {
 process_agents () {
   debug "${FUNCNAME[0]}" "$@"
 
-  if [[ -n "$OPT_ENABLE" ]]; then
-      for agent in "${AGENTS[@]}"; do
-        process_components load agent $agent
-      done
-  elif [[ -n "$OPT_DISABLE" ]]; then
-      for agent in "${AGENTS[@]}"; do
-        process_components unload agent $agent
-      done
-  else
-    display_usage
-  fi
+  for agent in "${AGENTS[@]}"; do
+    process_components $1 agent $agent
+  done
 }
 
 process_daemons () {
   debug "${FUNCNAME[0]}" "$@"
 
   for daemon in "${DAEMONS[@]}"; do
-    if [[ -n "$OPT_ENABLE" ]]; then
-        process_components load daemon $daemon
-    elif [[ -n "$OPT_DISABLE" ]]; then
-        process_components unload daemon $daemon
-    else
-      display_usage
-    fi
+    process_components $1 daemon $daemon
   done
 }
 
 parse_arguments_getopts () {
   debug "${FUNCNAME[0]}" "$@"
 
-  while getopts ":hDvldew" opt; do
+  while getopts ":hDvw" opt; do
     case $opt in
       h) OPT_HELP=true ;;
       D) OPT_DEBUG=true ;;
       v) OPT_VERBOSE=true ;;
-      l) OPT_LIST=true ;;
-      d) OPT_DISABLE=true ;;
-      e) OPT_ENABLE=true ;;
       w) OPT_WARN=true ;;
       *) return 1 ;;
     esac
@@ -300,12 +275,12 @@ main () {
 
   ensure_macos
   ensure_min_version
-
   check_sip
 
   process_arguments "$@"
-  process_agents
-  process_daemons
+
+  process_agents $1
+  process_daemons $1
 }
 
 main $@
