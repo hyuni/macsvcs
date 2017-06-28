@@ -40,6 +40,13 @@ error () {
   exit 1
 }
 
+ok () {
+  debug "${FUNCNAME[0]}" "$@"
+
+  echo -e "[\033[1;32mOK\033[0m] $@"
+  exit 1
+}
+
 warning () {
   debug "${FUNCNAME[0]}" "$@"
 
@@ -53,7 +60,7 @@ mute () {
   $@ > /dev/null 2>&1
 }
 
-parse_arguments_getopt () {
+parse_arguments_getoptr () {
   debug "${FUNCNAME[0]}" "$@"
 
   local opts=$(getopt -n "$SELF" --options hdved --longoptions help,debug,verbose,enable,disable -- "$@")
@@ -165,6 +172,33 @@ ensure_min_version () {
   fi
 }
 
+rename_plist () {
+  local src=$1
+  local dest=$2
+
+  if [[ -f "${src}" ]]; then
+      sudo mv "${src}" "${dest}"
+  else
+    if [[ -n "$OPT_WARN" ]]; then
+        warning "The plist file ${src} does not exist."
+    fi
+  fi
+}
+
+run_launchctl () {
+  local command=$1
+  local plist_path=$2
+
+  if [[ -f "$plist_path" ]]; then
+      sudo launchctl $command -w $plist_path
+      launchctl $command -w $plist_path
+  else
+    if [[ -n "$OPT_WARN" ]]; then
+        warning "The plist file ${plist_path} does not exist."
+    else
+  fi
+}
+
 process_components () {
   debug "${FUNCNAME[0]}" "$@"
 
@@ -173,44 +207,39 @@ process_components () {
   local launch_name=Launch${name}
   local plist_name=$3
   local plist_path=${BASE_DIR}/$launch_name/${plist_name}.plist
-
-  local command=
   local comment=
 
   case $op in
-    enable)
-      command=load
+    load)
       comment=enabled
-
-      if [[ -f "${plist_path}.bak" ]]; then
-          sudo mv "${plist_path}.bak" "${plist_path}"
-
-          [[ -n "$OPT_WARN" ]] && warning "The plist file ${plist_path}.bak does not exist."
-      fi
+      rename_plist "${plist_path}.bak" "${plist_path}"
+      run_launchctl load "${plist_path}"
       ;;
-    disable)
-      command=unload
+    unload)
       comment=disabled
-
-      if [[ -f "${plist_path}" ]]; then
-          sudo mv "${plist_path}" "${plist_path}.bak"
-
-          [[ -n "$OPT_WARN" ]] && warning "The plist file ${plist_path} does not exist."
-      fi
+      rename_plist "${plist_path}" "${plist_path}.bak"
+      run_launchctl unload "${plist_path}"
       ;;
     *)
       error "Invalid operation $op"
       ;;
   esac
+}
 
-  if [[ -f "$plist_path" ]]; then
-      sudo launchctl $command -w $plist_path
-      launchctl $command -w $plist_path
+process_common () {
+  debug "${FUNCNAME[0]}" "$@"
 
-      [[ -n "$OPT_WARN" ]] && warning "The plist file $plist_path does not exist."
+  if [[ -n "$OPT_ENABLE" ]]; then
+      for agent in "${AGENTS[@]}"; do
+        process_components load agent $agent
+      done
+  elif [[ -n "$OPT_DISABLE" ]]; then
+      for agent in "${AGENTS[@]}"; do
+        process_components unload agent $agent
+      done
+  else
+    display_usage
   fi
-
-  echo -e "[\033[1;32mOK\033[0m] ${name} ${plist_name} ${comment}"
 }
 
 process_agents () {
@@ -218,11 +247,11 @@ process_agents () {
 
   if [[ -n "$OPT_ENABLE" ]]; then
       for agent in "${AGENTS[@]}"; do
-        process_components enable agent $agent
+        process_components load agent $agent
       done
   elif [[ -n "$OPT_DISABLE" ]]; then
       for agent in "${AGENTS[@]}"; do
-        process_components disable agent $agent
+        process_components unload agent $agent
       done
   else
     display_usage
@@ -234,9 +263,9 @@ process_daemons () {
 
   for daemon in "${DAEMONS[@]}"; do
     if [[ -n "$OPT_ENABLE" ]]; then
-        process_components enable daemon $daemon
+        process_components load daemon $daemon
     elif [[ -n "$OPT_DISABLE" ]]; then
-        process_components disable daemon $daemon
+        process_components unload daemon $daemon
     else
       display_usage
     fi
