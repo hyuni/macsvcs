@@ -16,10 +16,8 @@ is going to run this script must be an administrator.
 Prerequisites
 -------------
 
-### Disable SIP
-
-To disable SIP, boot into recovery mode—press and hold `⌘ + r` when the system is booting, prior to
-the Apple logo display. Click `Utilities > Terminal` then, run:
+We need to disable SIP, first. To do that, boot into recovery mode, then press and hold `⌘ + r` while the
+system is booting. When the recovery system loads, click `Utilities > Terminal`. Then, run:
 
 ```bash
 csrutil disable
@@ -29,10 +27,30 @@ reboot
 After the system boots, login to your account.
 
 
+Installation
+------------
+
+You may clone the entire repository with:
+
+```bash
+git clone https://github.com/ebzzry/macsvcs
+```
+
+Or, you may get just the script:
+
+```bash
+curl -sSLO https://raw.githubusercontent.com/ebzzry/macsvcs/master/macsvcs
+```
+
+Then, don’t forget to make it executable:
+
+```bash
+chmod +x macsvcs
+```
+
+
 Usage
 -----
-
-### Disable services
 
 To disable the unneeded agents and daemon on your macOS system:
 
@@ -63,8 +81,6 @@ To display warnings for either the `unload` or `load` commands:
 
 Closing remarks
 ---------------
-
-### Re-enable SIP
 
 Should you wish to re-enable SIP, boot into recovery mode just like above. Open the Terminal application then, run:
 

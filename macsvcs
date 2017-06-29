@@ -4,6 +4,7 @@ set -euo pipefail
 
 readonly IFS=$'\n\t'
 readonly SELF=$(basename "${BASH_SOURCE[0]}")
+
 readonly VERSION=0.0.1
 readonly MINVER=10.12.5
 readonly GETOPT=/usr/local/opt/gnu-getopt/bin/getopt
